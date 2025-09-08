@@ -1,0 +1,73 @@
+package org.test.testlib.testcode;
+
+import java.io.IOException;
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+@WebServlet(value = "/sample")
+public class SampleValue extends HttpServlet {
+
+    private static final long serialVersionUID = 1L;
+
+    @Override
+    public void doGet(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        doPost(request, response);
+    }
+
+    @Override
+    public void doPost(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        response.setContentType("text/html;charset=UTF-8");
+
+        String queryString = request.getQueryString();
+        String paramval = "SampleValue" + "=";
+        int paramLoc = -1;
+        if (queryString != null) paramLoc = queryString.indexOf(paramval);
+        if (paramLoc == -1) {
+            response.getWriter()
+                    .println(
+                            "getQueryString() couldn't find expected parameter '"
+                                    + "SampleValue"
+                                    + "' in query string.");
+            return;
+        }
+
+        String param =
+                queryString.substring(
+                        paramLoc
+                                + paramval
+                                        .length());
+        int ampersandLoc = queryString.indexOf("&", paramLoc);
+        if (ampersandLoc != -1) {
+            param = queryString.substring(paramLoc + paramval.length(), ampersandLoc);
+        }
+        param = java.net.URLDecoder.decode(param, "UTF-8");
+
+        String bar = doSomething(request, param);
+
+        request.getSession().setAttribute("userid", bar);
+
+        response.getWriter()
+                .println(
+                        "Item: 'userid' with value: '"
+                                + org.test.testlib.helpers.Utils.encodeForHTML(bar)
+                                + "' saved in session.");
+    }
+
+    private static String doSomething(HttpServletRequest request, String param)
+            throws ServletException, IOException {
+
+        String bar = "safe!";
+        java.util.HashMap<String, Object> map3141 = new java.util.HashMap<String, Object>();
+        map3141.put("keyA-3141", "a-Value");
+        map3141.put("keyB-3141", param);
+        map3141.put("keyC", "another-Value");
+        bar = (String) map3141.get("keyB-3141");
+
+        return bar;
+    }
+}
