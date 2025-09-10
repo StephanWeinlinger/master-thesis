@@ -42,6 +42,18 @@ MODEL_CONFIG = {
         "temperature": 0,
         "can_reason": False,
     },
+    "gpt-4.1-mini": {
+        "provider": "azure_openai",
+        "pricing": {"input": 0.4, "output": 1.6},
+        "temperature": 0,
+        "can_reason": False,
+    },
+    "gpt-4.1": {
+        "provider": "azure_openai",
+        "pricing": {"input": 2, "output": 8},
+        "temperature": 0,
+        "can_reason": False,
+    },
     "o3": {
         "provider": "azure_openai",
         "pricing": {"input": 2, "output": 8},
@@ -238,9 +250,15 @@ def _query_vertex_ai(model_name: str, prompt: str):
 
 def _query_azure_openai(model_name: str, prompt: str):
     """Queries an Azure OpenAI model."""
+    azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+    api_key = os.getenv("AZURE_API_KEY")
+    if model_name == "gpt-4.1":  # different region for gpt-4.1
+        azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT_FC")
+        api_key = os.getenv("AZURE_API_KEY_FC")
+
     client = AzureOpenAI(
-        azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
-        api_key=os.getenv("AZURE_API_KEY"),
+        azure_endpoint=azure_endpoint,
+        api_key=api_key,
         api_version="2025-01-01-preview",
     )
 
