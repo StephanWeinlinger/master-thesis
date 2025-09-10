@@ -84,7 +84,7 @@ MODEL_CONFIG = {
     },
     "gpt-5-nano": {
         "provider": "azure_openai",
-        "pricing": {"input": 0.05, "output": 2.2},
+        "pricing": {"input": 0.05, "output": 0.4},
         "temperature": 1,
         "can_reason": True,
         "reasoning_effort": "medium",
@@ -111,7 +111,7 @@ MODEL_CONFIG = {
     },
     "mistral-medium-2505": {
         "provider": "azure_inference",
-        "pricing": {"input": 0.000008, "output": 0.000024},
+        "pricing": {"input": 0.4, "output": 2},
         "temperature": 0,
         "can_reason": False,
     },
