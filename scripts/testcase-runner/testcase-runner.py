@@ -516,18 +516,22 @@ def main():
     csv_file_name = f"{args.model_name}_{args.prompt_type}_{timestamp}.csv"
     csv_file_path = os.path.join(args.output_folder, csv_file_name)
 
-    with open(csv_file_path, "w", newline="", encoding="utf-8") as csvfile:
-        writer = csv.DictWriter(csvfile, fieldnames=CSV_HEADER)
-        writer.writeheader()
+    executor = ThreadPoolExecutor(max_workers=args.parallel_jobs)
 
-        logging.info(
-            f"Found {len(files_to_process)} files to process. Starting parallel execution..."
-        )
-        with ThreadPoolExecutor(max_workers=args.parallel_jobs) as executor:
+    try:
+        with open(csv_file_path, "w", newline="", encoding="utf-8") as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=CSV_HEADER)
+            writer.writeheader()
+
+            logging.info(
+                f"Found {len(files_to_process)} files to process. Starting parallel execution..."
+            )
+
             future_to_file = {
                 executor.submit(process_file, fp, args.model_name, args.prompt_type): fp
                 for fp in files_to_process
             }
+
             for future in as_completed(future_to_file):
                 try:
                     result = future.result()
@@ -542,7 +546,14 @@ def main():
                         {"file_name": os.path.basename(file_path), "analysis_pass": 0}
                     )
 
-    logging.info("--- Scan Complete ---")
+    except KeyboardInterrupt:
+        logging.warning(
+            "Shutdown signal (Ctrl+C) received. Cancelling pending tasks..."
+        )
+        executor.shutdown(wait=False, cancel_futures=True)
+        logging.info("Executor has been shut down.")
+
+    logging.info("--- Scan Complete or Abort ---")
     logging.info(f"Results saved to: {csv_file_path}")
     logging.info(f"Logs saved to: {log_file_path}")
 
