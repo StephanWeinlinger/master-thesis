@@ -119,7 +119,7 @@ MODEL_CONFIG = {
 
 PROMPT_TEMPLATE_ZERO_SHOT = """
 You are a security expert specializing in identifying vulnerabilities in source code.
-Analyze the following source code and identify any potential security vulnerabilities and categorize them by their corresponding CWE.
+Analyze the following source code and identify any potential security vulnerabilities and categorize them by their corresponding CWE. Note that they have to be exploitable in their current state.
 Important: Respond only with a comma-separated list of CWE identifiers (e.g., "CWE-89,CWE-79") if vulnerabilities are found, or "Not vulnerable" if no vulnerabilities are found.
 Source code to be analyzed:
 ```
@@ -129,45 +129,45 @@ Source code to be analyzed:
 
 PROMPT_TEMPLATE_FEW_SHOT = """
 You are a security expert specializing in identifying vulnerabilities in source code.
-Analyze the following source code and identify any potential security vulnerabilities and categorize them by their corresponding CWE.
+Analyze the following source code and identify any potential security vulnerabilities and categorize them by their corresponding CWE. Note that they have to be exploitable in their current state.
 Important: Respond only with a comma-separated list of CWE identifiers (e.g., "CWE-89,CWE-79") if vulnerabilities are found, or "Not vulnerable" if no vulnerabilities are found.
 
 Here are some examples:
 Example 1:
 Input:
-public void login(Connection conn, String username, String password) throws SQLException, NoSuchAlgorithmException {
+public void login(Connection conn, String username, String password) throws SQLException, NoSuchAlgorithmException {{
     String sql = "SELECT * FROM users WHERE username = '" + username + "'";
     Statement stmt = conn.createStatement();
     ResultSet rs = stmt.executeQuery(sql);
     MessageDigest md = MessageDigest.getInstance("MD5");
     md.update(password.getBytes());
     byte[] passwordHash = md.digest();
-}
+}}
 
 Output:
 CWE-89,CWE-328
 
 Example 2:
 Input:
-public String readFile(String filename) throws IOException {
+public String readFile(String filename) throws IOException {{
     String baseDir = "/var/user_files/";
     Path filePath = Paths.get(baseDir + filename);
     return new String(Files.readAllBytes(filePath));
-}
+}}
 
 Output:
 CWE-22
 
 Example 3:
 Input:
-public boolean getUser(Connection conn, String username) throws SQLException {
+public boolean getUser(Connection conn, String username) throws SQLException {{
     String sql = "SELECT user_id FROM users WHERE username = ?";
-    try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+    try (PreparedStatement pstmt = conn.prepareStatement(sql)) {{
         pstmt.setString(1, username);
         ResultSet rs = pstmt.executeQuery();
         return rs.next(); // Returns true if a record was found.
-    }
-}
+    }}
+}}
 
 Output:
 Not vulnerable
@@ -182,13 +182,13 @@ Output:
 
 PROMPT_TEMPLATE_COT = """
 You are a security expert specializing in identifying vulnerabilities in source code.
-Analyze the following source code and identify any potential security vulnerabilities and categorize them by their corresponding CWE.
+Analyze the following source code and identify any potential security vulnerabilities and categorize them by their corresponding CWE. Note that they have to be exploitable in their current state.
 Source code to be analyzed:
 ```
 {file_content}
 ```
 Let's think step by step.
-Important: The last line of your response should be a comma-separated list of CWE identifiers (e.g., "CWE-89,CWE-79") if vulnerabilities are found, or "Not vulnerable" if no vulnerabilities are found.
+Important: The last line of your response should be a comma-separated list of CWE identifiers (e.g., "CWE-89,CWE-79") if vulnerabilities are found, or "Not vulnerable" if no vulnerabilities are found. Your response will be parsed automatically, so ensure the final line adheres strictly to this format.
 """
 
 PROMPT_TEMPLATES = {
@@ -199,7 +199,7 @@ PROMPT_TEMPLATES = {
 
 CSV_HEADER = [
     "file_name",
-    "analysis_pass",
+    "error",
     "cwes",
     "input_token",
     "input_cost",
@@ -231,7 +231,9 @@ def _query_vertex_ai(model_name: str, prompt: str):
         temperature=0, max_output_tokens=10000, seed=0, top_p=0.1
     )
 
+    start_time = time.time()
     response = model.generate_content(prompt, generation_config=generation_config)
+    analysis_time = time.time() - start_time
 
     try:
         text_response = response.candidates[0].content.parts[0].text
@@ -245,7 +247,7 @@ def _query_vertex_ai(model_name: str, prompt: str):
         "input_tokens": response.usage_metadata.prompt_token_count,
         "reasoning_tokens": response.usage_metadata.thoughts_token_count,
         "output_tokens": response.usage_metadata.candidates_token_count,
-    }
+    }, analysis_time
 
 
 def _query_azure_openai(model_name: str, prompt: str):
@@ -274,7 +276,9 @@ def _query_azure_openai(model_name: str, prompt: str):
     else:
         params["top_p"] = 0.1
 
+    start_time = time.time()
     response = client.chat.completions.create(**params)
+    analysis_time = time.time() - start_time
 
     try:
         text_response = response.choices[0].message.content
@@ -292,7 +296,7 @@ def _query_azure_openai(model_name: str, prompt: str):
         "reasoning_tokens": response.usage.completion_tokens_details.reasoning_tokens,
         "output_tokens": response.usage.completion_tokens
         - response.usage.completion_tokens_details.reasoning_tokens,
-    }
+    }, analysis_time
 
 
 def _query_azure_inference(model_name: str, prompt: str):
@@ -313,7 +317,9 @@ def _query_azure_inference(model_name: str, prompt: str):
     if model_name != "mistral-medium-2505":
         params["top_p"] = 0.1
 
+    start_time = time.time()
     response = client.complete(**params)
+    analysis_time = time.time() - start_time
 
     try:
         text_response = response.choices[0].message.content
@@ -330,7 +336,7 @@ def _query_azure_inference(model_name: str, prompt: str):
         "input_tokens": response.usage.prompt_tokens,
         "reasoning_tokens": 0,
         "output_tokens": response.usage.completion_tokens,
-    }
+    }, analysis_time
 
 
 def query_llm(model_name: str, prompt: str):
@@ -367,14 +373,17 @@ def parse_llm_output(raw_output: str, prompt_type: str):
     if not non_empty_lines:
         return None  # No output
 
-    final_answer = non_empty_lines[-1]
+    last_line = non_empty_lines[-1]
 
-    # Regex to validate the format: "CWE-..." list or "Not vulnerable"
-    cwe_pattern = r"^CWE-\d+(,CWE-\d+)*$"
-    pattern = re.compile(rf"^(Not vulnerable|{cwe_pattern})$", re.IGNORECASE)
+    cwe_pattern = r"CWE-\d+(?:,CWE-\d+)*"
+    vulnerability_pattern = r"Not vulnerable"
 
-    if pattern.match(final_answer):
-        return final_answer
+    combined_pattern = f"({cwe_pattern})|({vulnerability_pattern})"
+
+    match = re.search(combined_pattern, last_line, re.IGNORECASE)
+
+    if match:
+        return match.group(0)
     else:
         return None
 
@@ -387,7 +396,7 @@ def process_file(file_path: str, model_name: str, prompt_type: str):
     logging.info(f"Processing file: {file_name}")
 
     result = {key: None for key in CSV_HEADER}
-    result.update({"file_name": file_name, "analysis_pass": 0})
+    result.update({"file_name": file_name, "error": 1})
 
     try:
         with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
@@ -397,7 +406,7 @@ def process_file(file_path: str, model_name: str, prompt_type: str):
         prompt = prompt_template.format(file_content=source_code)
 
         start_time = time.time()
-        llm_response = query_llm(model_name, prompt)
+        llm_response, analysis_time = query_llm(model_name, prompt)
         analysis_time = time.time() - start_time
 
         raw_output = llm_response.get("text", "")
@@ -431,9 +440,10 @@ def process_file(file_path: str, model_name: str, prompt_type: str):
             logging.warning(
                 f"Output validation failed for {file_name}. Model output:\n---\n{raw_output}\n---"
             )
+            result.update({"cwes": "Not vulnerable"})
             return result
 
-        result.update({"analysis_pass": 1, "cwes": parsed_cwes})
+        result.update({"error": 0, "cwes": parsed_cwes})
         logging.info(f"Successfully processed {file_name}.")
         return result
 
