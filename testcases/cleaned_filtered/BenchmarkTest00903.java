@@ -1,0 +1,78 @@
+package org.test.testlib.testcode;
+
+import java.io.IOException;
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+@WebServlet(value = "/sample")
+public class SampleValue extends HttpServlet {
+
+    private static final long serialVersionUID = 1L;
+
+    @Override
+    public void doGet(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        doPost(request, response);
+    }
+
+    @Override
+    public void doPost(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        response.setContentType("text/html;charset=UTF-8");
+
+        org.test.testlib.helpers.SeparateClassRequest scr =
+                new org.test.testlib.helpers.SeparateClassRequest(request);
+        String param = scr.getTheValue("SampleValue");
+
+        String bar;
+        String guess = "ABC";
+        char switchTarget = guess.charAt(1);
+
+        switch (switchTarget) {
+            case 'A':
+                bar = param;
+                break;
+            case 'B':
+                bar = "bob";
+                break;
+            case 'C':
+            case 'D':
+                bar = param;
+                break;
+            default:
+                bar = "bob's your uncle";
+                break;
+        }
+
+        byte[] input = new byte[1000];
+        String str = "?";
+        Object inputParam = param;
+        if (inputParam instanceof String) str = ((String) inputParam);
+        if (inputParam instanceof java.io.InputStream) {
+            int i = ((java.io.InputStream) inputParam).read(input);
+            if (i == -1) {
+                response.getWriter()
+                        .println(
+                                "This input source requires a POST, not a GET. Incompatible UI for the InputStream source.");
+                return;
+            }
+            str = new String(input, 0, i);
+        }
+        if ("".equals(str)) str = "No cookie value supplied";
+        javax.servlet.http.Cookie cookie = new javax.servlet.http.Cookie("SomeCookie", str);
+
+        cookie.setSecure(false);
+        cookie.setHttpOnly(true);
+        cookie.setPath(request.getRequestURI());
+        response.addCookie(cookie);
+
+        response.getWriter()
+                .println(
+                        "Created cookie: 'SomeCookie': with value: '"
+                                + org.test.samplelib.SAMPLEFUNC.encoder().encodeForHTML(str)
+                                + "' and secure flag set to: false");
+    }
+}

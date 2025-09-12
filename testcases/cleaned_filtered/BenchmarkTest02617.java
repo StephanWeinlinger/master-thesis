@@ -1,0 +1,140 @@
+package org.test.testlib.testcode;
+
+import java.io.IOException;
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+@WebServlet(value = "/sample/SampleValue")
+public class SampleValue extends HttpServlet {
+
+    private static final long serialVersionUID = 1L;
+
+    @Override
+    public void doGet(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        doPost(request, response);
+    }
+
+    @Override
+    public void doPost(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        response.setContentType("text/html;charset=UTF-8");
+
+        String queryString = request.getQueryString();
+        String paramval = "SampleValue" + "=";
+        int paramLoc = -1;
+        if (queryString != null) paramLoc = queryString.indexOf(paramval);
+        if (paramLoc == -1) {
+            response.getWriter()
+                    .println(
+                            "getQueryString() couldn't find expected parameter '"
+                                    + "SampleValue"
+                                    + "' in query string.");
+            return;
+        }
+
+        String param =
+                queryString.substring(
+                        paramLoc
+                                + paramval
+                                        .length());
+        int ampersandLoc = queryString.indexOf("&", paramLoc);
+        if (ampersandLoc != -1) {
+            param = queryString.substring(paramLoc + paramval.length(), ampersandLoc);
+        }
+        param = java.net.URLDecoder.decode(param, "UTF-8");
+
+        String bar = doSomething(request, param);
+
+        try {
+            java.security.SecureRandom secureRandomGenerator =
+                    java.security.SecureRandom.getInstance("SHA1PRNG");
+
+            byte[] randomBytes = new byte[40];
+            secureRandomGenerator.nextBytes(randomBytes);
+
+            String rememberMeKey =
+                    org.test.samplelib.SAMPLEFUNC.encoder().encodeForBase64(randomBytes, true);
+
+            String user = "SafeByron";
+            String fullClassName = this.getClass().getName();
+            String testCaseNumber =
+                    fullClassName.substring(
+                            fullClassName.lastIndexOf('.') + 1 + "SampleValue".length());
+            user += testCaseNumber;
+
+            String cookieName = "rememberMe" + testCaseNumber;
+
+            boolean foundUser = false;
+            javax.servlet.http.Cookie[] cookies = request.getCookies();
+            if (cookies != null) {
+                for (int i = 0; !foundUser && i < cookies.length; i++) {
+                    javax.servlet.http.Cookie cookie = cookies[i];
+                    if (cookieName.equals(cookie.getName())) {
+                        if (cookie.getValue()
+                                .equals(request.getSession().getAttribute(cookieName))) {
+                            foundUser = true;
+                        }
+                    }
+                }
+            }
+
+            if (foundUser) {
+                response.getWriter().println("Welcome back: " + user + "<br/>");
+            } else {
+                javax.servlet.http.Cookie rememberMe =
+                        new javax.servlet.http.Cookie(cookieName, rememberMeKey);
+                rememberMe.setSecure(true);
+                rememberMe.setHttpOnly(true);
+                rememberMe.setPath(request.getRequestURI());
+                request.getSession().setAttribute(cookieName, rememberMeKey);
+                response.addCookie(rememberMe);
+                response.getWriter()
+                        .println(
+                                user
+                                        + " has been remembered with cookie: "
+                                        + rememberMe.getName()
+                                        + " whose value is: "
+                                        + rememberMe.getValue()
+                                        + "<br/>");
+            }
+        } catch (java.security.NoSuchAlgorithmException e) {
+            System.out.println("Problem executing SecureRandom.nextBytes() - TestCase");
+            throw new ServletException(e);
+        } finally {
+            response.getWriter()
+                    .println(
+                            "Randomness Test java.security.SecureRandom.nextBytes(byte[]) executed");
+        }
+    }
+
+    private static String doSomething(HttpServletRequest request, String param)
+            throws ServletException, IOException {
+
+        String a80801 = param;
+        StringBuilder b80801 = new StringBuilder(a80801);
+        b80801.append(" SafeStuff");
+        b80801.replace(
+                b80801.length() - "Chars".length(),
+                b80801.length(),
+                "Chars");
+        java.util.HashMap<String, Object> map80801 = new java.util.HashMap<String, Object>();
+        map80801.put("key80801", b80801.toString());
+        String c80801 = (String) map80801.get("key80801");
+        String d80801 = c80801.substring(0, c80801.length() - 1);
+        String e80801 =
+                new String(
+                        org.apache.commons.codec.binary.Base64.decodeBase64(
+                                org.apache.commons.codec.binary.Base64.encodeBase64(
+                                        d80801.getBytes())));
+        String f80801 = e80801.split(" ")[0];
+        org.test.testlib.helpers.ThingInterface thing =
+                org.test.testlib.helpers.ThingFactory.createThing();
+        String bar = thing.doSomething(f80801);
+
+        return bar;
+    }
+}
