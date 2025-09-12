@@ -1,0 +1,83 @@
+package org.test.testlib.testcode;
+
+import java.io.IOException;
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+@WebServlet(value = "/sample-00/SampleValue")
+public class SampleValue extends HttpServlet {
+
+    private static final long serialVersionUID = 1L;
+
+    @Override
+    public void doGet(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        doPost(request, response);
+    }
+
+    @Override
+    public void doPost(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        response.setContentType("text/html;charset=UTF-8");
+
+        String param = "";
+        if (request.getHeader("SampleValue") != null) {
+            param = request.getHeader("SampleValue");
+        }
+
+        param = java.net.URLDecoder.decode(param, "UTF-8");
+
+        String a9823 = param;
+        StringBuilder b9823 = new StringBuilder(a9823);
+        b9823.append(" SafeStuff");
+        b9823.replace(
+                b9823.length() - "Chars".length(),
+                b9823.length(),
+                "Chars");
+        java.util.HashMap<String, Object> map9823 = new java.util.HashMap<String, Object>();
+        map9823.put("key9823", b9823.toString());
+        String c9823 = (String) map9823.get("key9823");
+        String d9823 = c9823.substring(0, c9823.length() - 1);
+        String e9823 =
+                new String(
+                        org.apache.commons.codec.binary.Base64.decodeBase64(
+                                org.apache.commons.codec.binary.Base64.encodeBase64(
+                                        d9823.getBytes())));
+        String f9823 = e9823.split(" ")[0];
+        org.test.testlib.helpers.ThingInterface thing =
+                org.test.testlib.helpers.ThingFactory.createThing();
+        String g9823 = "barbarians_at_the_gate";
+        String bar = thing.doSomething(g9823);
+
+        byte[] input = new byte[1000];
+        String str = "?";
+        Object inputParam = param;
+        if (inputParam instanceof String) str = ((String) inputParam);
+        if (inputParam instanceof java.io.InputStream) {
+            int i = ((java.io.InputStream) inputParam).read(input);
+            if (i == -1) {
+                response.getWriter()
+                        .println(
+                                "This input source requires a POST, not a GET. Incompatible UI for the InputStream source.");
+                return;
+            }
+            str = new String(input, 0, i);
+        }
+        if ("".equals(str)) str = "No cookie value supplied";
+        javax.servlet.http.Cookie cookie = new javax.servlet.http.Cookie("SomeCookie", str);
+
+        cookie.setSecure(false);
+        cookie.setHttpOnly(true);
+        cookie.setPath(request.getRequestURI());
+        response.addCookie(cookie);
+
+        response.getWriter()
+                .println(
+                        "Created cookie: 'SomeCookie': with value: '"
+                                + org.test.samplelib.SAMPLEFUNC.encoder().encodeForHTML(str)
+                                + "' and secure flag set to: false");
+    }
+}

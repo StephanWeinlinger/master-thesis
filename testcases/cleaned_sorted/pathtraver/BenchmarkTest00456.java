@@ -1,0 +1,67 @@
+package org.test.testlib.testcode;
+
+import java.io.IOException;
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+@WebServlet(value = "/sample")
+public class SampleValue extends HttpServlet {
+
+    private static final long serialVersionUID = 1L;
+
+    @Override
+    public void doGet(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        doPost(request, response);
+    }
+
+    @Override
+    public void doPost(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        response.setContentType("text/html;charset=UTF-8");
+
+        java.util.Map<String, String[]> map = request.getParameterMap();
+        String param = "";
+        if (!map.isEmpty()) {
+            String[] values = map.get("SampleValue");
+            if (values != null) param = values[0];
+        }
+
+        String bar = "safe!";
+        java.util.HashMap<String, Object> map49381 = new java.util.HashMap<String, Object>();
+        map49381.put("keyA-49381", "a-Value");
+        map49381.put("keyB-49381", param);
+        map49381.put("keyC", "another-Value");
+        bar = (String) map49381.get("keyB-49381");
+
+        String fileName = null;
+        java.io.FileInputStream fis = null;
+
+        try {
+            fileName = org.test.testlib.helpers.Utils.TESTFILES_DIR + bar;
+            fis = new java.io.FileInputStream(fileName);
+            byte[] b = new byte[1000];
+            int size = fis.read(b);
+            response.getWriter()
+                    .println(
+                            "The beginning of file: '"
+                                    + org.test.samplelib.SAMPLEFUNC.encoder().encodeForHTML(fileName)
+                                    + "' is:\n\n");
+            response.getWriter()
+                    .println(org.test.samplelib.SAMPLEFUNC.encoder().encodeForHTML(new String(b, 0, size)));
+        } catch (Exception e) {
+            System.out.println("Couldn't open FileInputStream on file: '" + fileName + "'");
+        } finally {
+            if (fis != null) {
+                try {
+                    fis.close();
+                    fis = null;
+                } catch (Exception e) {
+                }
+            }
+        }
+    }
+}
