@@ -170,6 +170,9 @@ def evaluate_scans(
             output_filename = f"{input_file_path.stem}_results_close_matches.csv"
         output_path = output_folder / output_filename
 
+        # Sort output_df by file_name
+        output_df = output_df.sort_values(by="file_name")
+
         output_df.to_csv(output_path, index=False)
         print(f"Processed {len(results_for_file)} entries.")
         print(f"Results saved to: {output_path}")
