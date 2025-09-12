@@ -132,12 +132,17 @@ def evaluate_scans(
 
             cwe_found = False
             matched_cwe = ""
-            # Find the first acceptable CWE in the list of found CWEs
-            for cwe in found_cwes_list:
-                if cwe in acceptable_cwes:
-                    cwe_found = True
-                    matched_cwe = cwe
-                    break
+            # Check for direct match first
+            if expected_cwe in found_cwes_list:
+                cwe_found = True
+                matched_cwe = expected_cwe
+            else:
+                # Find the first acceptable CWE in the list of found CWEs
+                for cwe in found_cwes_list:
+                    if cwe in acceptable_cwes:
+                        cwe_found = True
+                        matched_cwe = cwe
+                        break
 
             # 4. Classify as TP, FP, TN, FN
             tp, fp, tn, fn = 0, 0, 0, 0
