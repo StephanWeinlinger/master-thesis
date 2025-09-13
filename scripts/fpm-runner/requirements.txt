@@ -1,0 +1,5 @@
+azure.identity
+azure-ai-inference
+openai
+google-cloud-aiplatform
+python-dotenv
