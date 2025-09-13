@@ -88,20 +88,7 @@ MODEL_CONFIG = {
         "can_reason": True,
         "reasoning_effort": "medium",
     },
-    "gpt-5-chat": {
-        "provider": "azure_openai",
-        "pricing": {"input": 1.25, "output": 10},
-        "temperature": 0,
-        "can_reason": True,
-        "reasoning_effort": "medium",
-    },
     # Azure AI Inference Models
-    "DeepSeek-R1-0528": {
-        "provider": "azure_inference",
-        "pricing": {"input": 1.35, "output": 5.4},
-        "temperature": 0,
-        "can_reason": True,
-    },
     "DeepSeek-V3-0324": {
         "provider": "azure_inference",
         "pricing": {"input": 1.485, "output": 4.56},
