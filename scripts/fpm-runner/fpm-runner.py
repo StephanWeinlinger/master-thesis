@@ -121,7 +121,7 @@ You are a security expert specializing in SAST-Scan result analysis. Your job is
 You are given the following information as input:
 - Contents of the analyzed source code file
 - Output of a SAST-Scan tool that describes a potential vulnerability in the source code file
-Analyze the source code and the SAST-Scan output and respond with either "Vulnerable" or "Not vulnerable". Ignore any other vulnerabilities that might exist in the code, only focus on validating the given one. Note that the given vulnerability should be exploitable in its current state, but err on on the side of caution if unsure. The cost of a false negative is much higher than that of a false positive.
+Analyze the source code and the SAST-Scan output and respond with either "Vulnerable" or "Not vulnerable". Ignore any other vulnerabilities that might exist in the code, only focus on validating the given one. Err on on the side of caution if unsure. The cost of a false negative is much higher than that of a false positive.
 Important: Respond only with "Vulnerable" or "Not vulnerable"
 Source code of file that was analyzed:
 ```
@@ -141,7 +141,7 @@ You are a security expert specializing in SAST-Scan result analysis. Your job is
 You are given the following information as input:
 - Contents of the analyzed source code file
 - Output of a SAST-Scan tool that describes a potential vulnerability in the source code file
-Analyze the source code and the SAST-Scan output and respond with either "Vulnerable" or "Not vulnerable". Ignore any other vulnerabilities that might exist in the code, only focus on validating the given one. Note that the given vulnerability should be exploitable in its current state, but err on on the side of caution if unsure. The cost of a false negative is much higher than that of a false positive.
+Analyze the source code and the SAST-Scan output and respond with either "Vulnerable" or "Not vulnerable". Ignore any other vulnerabilities that might exist in the code, only focus on validating the given one. Err on on the side of caution if unsure. The cost of a false negative is much higher than that of a false positive.
 Important: Respond only with "Vulnerable" or "Not vulnerable"
 
 Here are some examples:
@@ -223,7 +223,7 @@ You are a security expert specializing in SAST-Scan result analysis. Your job is
 You are given the following information as input:
 - Contents of the analyzed source code file
 - Output of a SAST-Scan tool that describes a potential vulnerability in the source code file
-Analyze the source code and the SAST-Scan output. Ignore any other vulnerabilities that might exist in the code, only focus on validating the given one. Note that the given vulnerability should be exploitable in its current state, but err on on the side of caution if unsure. The cost of a false negative is much higher than that of a false positive.
+Analyze the source code and the SAST-Scan output. Ignore any other vulnerabilities that might exist in the code, only focus on validating the given one. Err on on the side of caution if unsure. The cost of a false negative is much higher than that of a false positive.
 Source code of file that was analyzed:
 ```
 {file_content}
