@@ -2,6 +2,7 @@ import pandas as pd
 import argparse
 import os
 from pathlib import Path
+from datetime import datetime
 
 # This hierarchy defines which CWEs are considered "close matches" to a given CWE.
 CWE_HIERARCHY = {
@@ -19,13 +20,73 @@ CWE_HIERARCHY = {
 }
 
 
+def calculate_metrics(df: pd.DataFrame) -> dict:
+    """Calculates a dictionary of metrics from a results dataframe."""
+    metrics = {}
+
+    # Confusion Matrix sums
+    tp = df["tp"].sum()
+    fp = df["fp"].sum()
+    tn = df["tn"].sum()
+    fn = df["fn"].sum()
+    metrics.update({"tp": tp, "fp": fp, "tn": tn, "fn": fn})
+
+    # Performance metrics
+    denominator_accuracy = tp + tn + fp + fn
+    metrics["accuracy"] = (
+        ((tp + tn) / denominator_accuracy) if denominator_accuracy > 0 else 0.0
+    )
+
+    denominator_precision = tp + fp
+    metrics["precision"] = (
+        (tp / denominator_precision) if denominator_precision > 0 else 0.0
+    )
+
+    denominator_recall = tp + fn
+    metrics["recall"] = (tp / denominator_recall) if denominator_recall > 0 else 0.0
+
+    denominator_f1 = metrics["precision"] + metrics["recall"]
+    metrics["f1"] = (
+        (2 * (metrics["precision"] * metrics["recall"]) / denominator_f1)
+        if denominator_f1 > 0
+        else 0.0
+    )
+
+    # Direct match percentage
+    df_matched = df[df["matched_cwe"].notna() & (df["matched_cwe"] != "")].copy()
+    df_matched["direct_match"] = pd.to_numeric(
+        df_matched["direct_match"], errors="coerce"
+    )
+
+    if not df_matched.empty:
+        direct_match_sum = df_matched["direct_match"].sum()
+        total_with_match = len(df_matched)
+        metrics["direct_match_percentage"] = (
+            (direct_match_sum / total_with_match) if total_with_match > 0 else None
+        )
+    else:
+        metrics["direct_match_percentage"] = None
+
+    # Token, cost, and time metrics
+    metrics["avg_input_tokens"] = df["input_token"].mean()
+    metrics["avg_reasoning_tokens"] = df["reasoning_token"].mean()
+    metrics["avg_output_tokens"] = df["output_token"].mean()
+    metrics["avg_cost"] = df["total_cost"].mean()
+    metrics["total_cost"] = df["total_cost"].sum()
+    metrics["avg_time"] = df["analysis_time"].mean()
+
+    # Error count
+    metrics["total_errors"] = df["error"].sum()
+
+    return metrics
+
+
 def evaluate_scans(
     input_folder: Path,
     output_folder: Path,
     expected_results_path: Path,
     count_close_matches: bool,
 ):
-    # 1. Load Expected Results (Ground Truth) - This is done once.
     try:
         df_expected = pd.read_csv(expected_results_path)
         df_expected.set_index("file_name", inplace=True)
@@ -40,7 +101,6 @@ def evaluate_scans(
         print(f"Error loading expected results file: {e}")
         return
 
-    # 2. Find all SAST scan result CSVs and process them one by one
     scan_files = list(input_folder.glob("*.csv"))
     if not scan_files:
         print(f"Error: No CSV files found in the input folder '{input_folder}'")
@@ -49,6 +109,8 @@ def evaluate_scans(
     # Create output directory if it doesn't exist
     output_folder.mkdir(parents=True, exist_ok=True)
     print(f"\nFound {len(scan_files)} scan file(s) to process...")
+
+    summary_data = []  # List to hold all summary rows for the final summary file
 
     for input_file_path in scan_files:
         print(f"\n--- Processing: {input_file_path.name} ---")
@@ -59,7 +121,17 @@ def evaluate_scans(
             print(f"Error reading file {input_file_path.name}: {e}. Skipping.")
             continue
 
-        # 3. Process each scan result within the current file
+        # Extract model and prompting type from filename
+        try:
+            parts = input_file_path.name.split("_")
+            model = parts[0]
+            prompting_type = parts[1]
+        except IndexError:
+            print(
+                f"Warning: Could not parse model and prompting_type from filename '{input_file_path.name}'. Using 'unknown'."
+            )
+            model, prompting_type = "unknown", "unknown"
+
         results_for_file = []
         for _, scan_row in df_scan.iterrows():
             file_name = scan_row["file_name"]
@@ -101,7 +173,6 @@ def evaluate_scans(
                         matched_cwe = cwe
                         break
 
-            # 4. Classify as TP, FP, TN, FN
             tp, fp, tn, fn = 0, 0, 0, 0
             if cwe_found and is_vulnerable:
                 tp = 1  # True Positive
@@ -112,7 +183,6 @@ def evaluate_scans(
             elif not cwe_found and is_vulnerable:
                 fn = 1  # False Negative
 
-            # 5. Construct the output row
             output_row = {
                 "file_name": file_name,
                 "is_real_vulnerability": int(is_vulnerable),
@@ -134,7 +204,6 @@ def evaluate_scans(
             )
             continue
 
-        # 6. Write results for the current file to its own output CSV
         output_df = pd.DataFrame(results_for_file)
 
         output_columns = [
@@ -163,26 +232,85 @@ def evaluate_scans(
                 output_df[col] = None
         output_df = output_df[output_columns]
 
-        # Construct the new filename
-        # Add close matches info to filename if applicable
         output_filename = f"{input_file_path.stem}_results.csv"
         if count_close_matches:
             output_filename = f"{input_file_path.stem}_results_close_matches.csv"
         output_path = output_folder / output_filename
 
-        # Sort output_df by file_name
         output_df = output_df.sort_values(by="file_name")
-
         output_df.to_csv(output_path, index=False)
         print(f"Processed {len(results_for_file)} entries.")
         print(f"Results saved to: {output_path}")
+
+        # Get all unique expected CWEs for this file
+        unique_cwes = output_df["correct_cwe"].unique()
+
+        # Calculate metrics for each specific CWE
+        for cwe in unique_cwes:
+            df_cwe_subset = output_df[output_df["correct_cwe"] == cwe]
+            metrics = calculate_metrics(df_cwe_subset)
+            summary_row = {
+                "model": model,
+                "prompting_type": prompting_type,
+                "cwe": cwe,
+                **metrics,
+            }
+            summary_data.append(summary_row)
+
+        # Calculate metrics for "all" CWEs in the file
+        all_metrics = calculate_metrics(output_df)
+        summary_row_all = {
+            "model": model,
+            "prompting_type": prompting_type,
+            "cwe": "all",
+            **all_metrics,
+        }
+        summary_data.append(summary_row_all)
+
+    if summary_data:
+        summary_df = pd.DataFrame(summary_data)
+
+        # Define and set column order for the summary file
+        summary_columns = [
+            "model",
+            "prompting_type",
+            "cwe",
+            "direct_match_percentage",
+            "fp",
+            "fn",
+            "tp",
+            "tn",
+            "accuracy",
+            "precision",
+            "recall",
+            "f1",
+            "avg_input_tokens",
+            "avg_reasoning_tokens",
+            "avg_output_tokens",
+            "avg_cost",
+            "total_cost",
+            "avg_time",
+            "total_errors",
+        ]
+        summary_df = summary_df[summary_columns]
+
+        # Generate timestamp for the summary filename
+        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        summary_filename = f"summary_{timestamp}.csv"
+        summary_output_path = output_folder / summary_filename
+
+        summary_df.to_csv(summary_output_path, index=False, float_format="%.4f")
+        print(f"\n--- Summary file created ---")
+        print(f"Aggregated summary saved to: {summary_output_path}")
+    else:
+        print("\n--- No data processed, summary file not created. ---")
 
     print("\n--- All files processed. ---")
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Evaluate SAST scan results against a ground truth file, creating a separate output for each input file.",
+        description="Evaluate SAST scan results against a ground truth file, creating a separate output for each input file and a final summary file.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
@@ -193,7 +321,7 @@ def main():
     parser.add_argument(
         "output_folder",
         type=Path,
-        help="Folder where the output evaluation CSV will be saved.",
+        help="Folder where the output evaluation CSVs will be saved.",
     )
     parser.add_argument(
         "expected_results",
