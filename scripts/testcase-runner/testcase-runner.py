@@ -192,8 +192,8 @@ Important: The last line of your response should be a comma-separated list of CW
 """
 
 PROMPT_TEMPLATES = {
-    "zero_shot": PROMPT_TEMPLATE_ZERO_SHOT,
-    "few_shot": PROMPT_TEMPLATE_FEW_SHOT,
+    "zero-shot": PROMPT_TEMPLATE_ZERO_SHOT,
+    "few-shot": PROMPT_TEMPLATE_FEW_SHOT,
     "cot": PROMPT_TEMPLATE_COT,
 }
 
@@ -269,6 +269,7 @@ def _query_azure_openai(model_name: str, prompt: str):
         "messages": [{"role": "user", "content": [{"type": "text", "text": prompt}]}],
         "max_completion_tokens": 10000,
         "temperature": MODEL_CONFIG[model_name]["temperature"],
+        "timeout": 180,
     }
 
     if MODEL_CONFIG[model_name]["can_reason"]:
@@ -501,7 +502,7 @@ def main():
             return
 
     os.makedirs(args.output_folder, exist_ok=True)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     log_file_path = os.path.join(
         args.output_folder, f"{args.model_name}_{args.prompt_type}_{timestamp}.log"
     )
@@ -553,7 +554,7 @@ def main():
                         f"A critical error occurred in the thread for {os.path.basename(file_path)}: {e}"
                     )
                     writer.writerow(
-                        {"file_name": os.path.basename(file_path), "analysis_pass": 0}
+                        {"file_name": os.path.basename(file_path), "error": 1}
                     )
 
     except KeyboardInterrupt:
