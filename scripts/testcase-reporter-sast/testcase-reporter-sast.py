@@ -2,6 +2,7 @@ import json
 import pandas as pd
 import argparse
 from pathlib import Path
+from datetime import datetime
 
 # This hierarchy defines which CWEs are considered "close matches" to a given CWE.
 CWE_HIERARCHY = {
@@ -17,6 +18,52 @@ CWE_HIERARCHY = {
     "CWE-614": ["CWE-614"],
     "CWE-643": ["CWE-643"],
 }
+
+
+def calculate_metrics(df: pd.DataFrame) -> dict:
+    """Calculates a dictionary of metrics from a results dataframe."""
+    metrics = {}
+
+    # Confusion Matrix sums
+    tp = df["tp"].sum()
+    fp = df["fp"].sum()
+    tn = df["tn"].sum()
+    fn = df["fn"].sum()
+    metrics.update({"tp": tp, "fp": fp, "tn": tn, "fn": fn})
+
+    # Performance metrics
+    denominator_accuracy = tp + tn + fp + fn
+    metrics["accuracy"] = (
+        ((tp + tn) / denominator_accuracy) if denominator_accuracy > 0 else 0.0
+    )
+
+    denominator_precision = tp + fp
+    metrics["precision"] = (
+        (tp / denominator_precision) if denominator_precision > 0 else 0.0
+    )
+
+    denominator_recall = tp + fn
+    metrics["recall"] = (tp / denominator_recall) if denominator_recall > 0 else 0.0
+
+    denominator_f1 = metrics["precision"] + metrics["recall"]
+    metrics["f1"] = (
+        (2 * (metrics["precision"] * metrics["recall"]) / denominator_f1)
+        if denominator_f1 > 0
+        else 0.0
+    )
+
+    # Direct match percentage
+    df_matched = df[df["matched_cwe"].notna() & (df["matched_cwe"] != "")].copy()
+    if not df_matched.empty:
+        direct_match_sum = df_matched["direct_match"].sum()
+        total_with_match = len(df_matched)
+        metrics["direct_match_percentage"] = (
+            (direct_match_sum / total_with_match) if total_with_match > 0 else None
+        )
+    else:
+        metrics["direct_match_percentage"] = None
+
+    return metrics
 
 
 def parse_sarif_file(sarif_data: dict) -> dict:
@@ -50,12 +97,10 @@ def parse_sarif_file(sarif_data: dict) -> dict:
             if phys_loc:
                 file_path = phys_loc.get("artifactLocation", {}).get("uri")
                 if file_path:
-                    # Initialize a set for the file if it's the first time we see it
                     if file_path not in file_findings:
                         file_findings[file_path] = set()
                     file_findings[file_path].update(cwes_for_rule)
 
-    # Convert sets of CWEs to sorted lists for consistent output
     final_file_findings = {
         file: sorted(list(cwes)) for file, cwes in file_findings.items()
     }
@@ -69,10 +114,8 @@ def evaluate_scans(
     expected_results_path: Path,
     count_close_matches: bool,
 ):
-    # 1. Load Expected Results (Ground Truth) - This is done once.
     try:
         df_expected = pd.read_csv(expected_results_path)
-        # Keep the index as is, we will iterate over rows
         df_expected["is_real_vulnerability"] = (
             df_expected["is_real_vulnerability"].astype(str).str.lower() == "true"
         )
@@ -84,45 +127,34 @@ def evaluate_scans(
         print(f"Error loading expected results file: {e}")
         return
 
-    # 2. Find all SAST scan result SARIF files and process them one by one
     scan_files = list(input_folder.glob("*.sarif"))
     if not scan_files:
         print(f"Error: No SARIF files found in the input folder '{input_folder}'")
         return
 
-    # Create output directory if it doesn't exist
     output_folder.mkdir(parents=True, exist_ok=True)
     print(f"\nFound {len(scan_files)} scan file(s) to process...")
+
+    summary_data = []  # List to hold all summary rows for the final summary file
 
     for input_file_path in scan_files:
         print(f"\n--- Processing: {input_file_path.name} ---")
         try:
             with open(input_file_path, "r", encoding="utf-8") as f:
                 sarif_data = json.load(f)
-            # Parse the SARIF data to get a dictionary of {file: [CWEs]} for files with findings
             scan_results = parse_sarif_file(sarif_data)
-        except json.JSONDecodeError as e:
-            print(f"Error decoding JSON from {input_file_path.name}: {e}. Skipping.")
-            continue
         except Exception as e:
             print(f"Error processing file {input_file_path.name}: {e}. Skipping.")
             continue
 
-        # 3. Iterate through the ground truth and compare against scan results
         results_for_file = []
         for _, expected_row in df_expected.iterrows():
             file_name = expected_row["file_name"]
             is_vulnerable = expected_row["is_real_vulnerability"]
             expected_cwe = expected_row["cwe"]
 
-            # Get the list of found CWEs for this file from the scan results.
-            # If the file was not found in the scan results, this returns an empty list.
             found_cwes_list = scan_results.get(file_name, [])
-
-            if found_cwes_list:
-                found_cwes_str = ",".join(found_cwes_list)
-            else:
-                found_cwes_str = "Not vulnerable"
+            found_cwes_str = ",".join(found_cwes_list) if found_cwes_list else ""
 
             acceptable_cwes = (
                 CWE_HIERARCHY.get(expected_cwe, [expected_cwe])
@@ -132,36 +164,32 @@ def evaluate_scans(
 
             cwe_found = False
             matched_cwe = ""
-            # Check for direct match first
             if expected_cwe in found_cwes_list:
                 cwe_found = True
                 matched_cwe = expected_cwe
             else:
-                # Find the first acceptable CWE in the list of found CWEs
                 for cwe in found_cwes_list:
                     if cwe in acceptable_cwes:
                         cwe_found = True
                         matched_cwe = cwe
                         break
 
-            # 4. Classify as TP, FP, TN, FN
             tp, fp, tn, fn = 0, 0, 0, 0
             if cwe_found and is_vulnerable:
-                tp = 1  # True Positive
+                tp = 1
             elif cwe_found and not is_vulnerable:
-                fp = 1  # False Positive
+                fp = 1
             elif not cwe_found and not is_vulnerable:
-                tn = 1  # True Negative
+                tn = 1
             elif not cwe_found and is_vulnerable:
-                fn = 1  # False Negative
+                fn = 1
 
-            # 5. Construct the output row
             output_row = {
                 "file_name": file_name,
                 "is_real_vulnerability": int(is_vulnerable),
                 "correct_cwe": expected_cwe,
                 "matched_cwe": matched_cwe,
-                "direct_match": int(matched_cwe == expected_cwe) if matched_cwe else 0,
+                "direct_match": int(matched_cwe == expected_cwe) if matched_cwe else "",
                 "tp": tp,
                 "fp": fp,
                 "tn": tn,
@@ -171,14 +199,10 @@ def evaluate_scans(
             results_for_file.append(output_row)
 
         if not results_for_file:
-            print(
-                f"No entries from the expected results could be processed for {input_file_path.name}."
-            )
+            print(f"No entries processed for {input_file_path.name}.")
             continue
 
-        # 6. Write results for the current file to its own output CSV
         output_df = pd.DataFrame(results_for_file)
-
         output_columns = [
             "file_name",
             "is_real_vulnerability",
@@ -193,17 +217,55 @@ def evaluate_scans(
         ]
         output_df = output_df[output_columns]
 
-        # Construct the new filename
         output_filename_base = f"{input_file_path.stem}_results"
         if count_close_matches:
             output_filename_base += "_close_matches"
         output_filename = f"{output_filename_base}.csv"
-
         output_path = output_folder / output_filename
 
         output_df.to_csv(output_path, index=False)
         print(f"Processed {len(results_for_file)} entries based on ground truth.")
         print(f"Results saved to: {output_path}")
+
+        scan_name = input_file_path.stem
+        unique_cwes = output_df["correct_cwe"].unique()
+
+        for cwe in unique_cwes:
+            df_cwe_subset = output_df[output_df["correct_cwe"] == cwe]
+            metrics = calculate_metrics(df_cwe_subset)
+            summary_row = {"scan": scan_name, "cwe": cwe, **metrics}
+            summary_data.append(summary_row)
+
+        all_metrics = calculate_metrics(output_df)
+        summary_row_all = {"scan": scan_name, "cwe": "all", **all_metrics}
+        summary_data.append(summary_row_all)
+
+    if summary_data:
+        summary_df = pd.DataFrame(summary_data)
+        summary_columns = [
+            "scan",
+            "cwe",
+            "direct_match_percentage",
+            "tp",
+            "fp",
+            "tn",
+            "fn",
+            "accuracy",
+            "precision",
+            "recall",
+            "f1",
+        ]
+        summary_df = summary_df[summary_columns]
+
+        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        summary_filename = f"summary_sarif_{timestamp}.csv"
+        summary_output_path = output_folder / summary_filename
+
+        summary_df.to_csv(summary_output_path, index=False, float_format="%.4f")
+        print(f"\n--- Summary file created ---")
+        print(f"Aggregated summary saved to: {summary_output_path}")
+    else:
+        print("\n--- No data processed, summary file not created. ---")
 
     print("\n--- All files processed. ---")
 
