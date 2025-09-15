@@ -7,14 +7,34 @@ from datetime import datetime
 def calculate_metrics(df: pd.DataFrame) -> dict:
     metrics = {}
 
-    # Confusion Matrix sums
     tp = df["tp"].sum()
     fp = df["fp"].sum()
     tn = df["tn"].sum()
     fn = df["fn"].sum()
-    metrics.update({"tp": tp, "fp": fp, "tn": tn, "fn": fn})
 
-    # Performance metrics
+    tp_old = df["tp_old"].sum()
+    fp_old = df["fp_old"].sum()
+    tn_old = df["tn_old"].sum()
+    fn_old = df["fn_old"].sum()
+
+    tp_diff = tp - tp_old
+    fp_diff = fp - fp_old
+    tn_diff = tn - tn_old
+    fn_diff = fn - fn_old
+
+    metrics.update(
+        {
+            "tp": tp,
+            "tp_diff": tp_diff,
+            "fp": fp,
+            "fp_diff": fp_diff,
+            "tn": tn,
+            "tn_diff": tn_diff,
+            "fn": fn,
+            "fn_diff": fn_diff,
+        }
+    )
+
     denominator_accuracy = tp + tn + fp + fn
     metrics["accuracy"] = (
         ((tp + tn) / denominator_accuracy) if denominator_accuracy > 0 else 0.0
@@ -126,15 +146,19 @@ def evaluate_fp_mitigation(input_folder: Path, output_folder: Path):
     if summary_data:
         summary_df = pd.DataFrame(summary_data)
 
-        # Define and set column order for the summary file
+        # Define and set column order for the summary file, including difference columns
         summary_columns = [
             "model",
             "prompting_type",
             "cwe",
             "tp",
+            "tp_diff",
             "fp",
+            "fp_diff",
             "tn",
+            "tn_diff",
             "fn",
+            "fn_diff",
             "accuracy",
             "precision",
             "recall",
