@@ -35,12 +35,6 @@ MODEL_CONFIG = {
         },
     },
     # Azure OpenAI Models
-    "gpt-4o": {
-        "provider": "azure_openai",
-        "pricing": {"input": 2.5, "output": 10},
-        "temperature": 0,
-        "can_reason": False,
-    },
     "gpt-4.1-mini": {
         "provider": "azure_openai",
         "pricing": {"input": 0.4, "output": 1.6},
