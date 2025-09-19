@@ -251,6 +251,7 @@ def _query_azure_openai(model_name: str, prompt: str):
         "max_completion_tokens": 10000,
         "temperature": MODEL_CONFIG[model_name]["temperature"],
         "timeout": 180,
+        "seed": 0,
     }
 
     if MODEL_CONFIG[model_name]["can_reason"]:
