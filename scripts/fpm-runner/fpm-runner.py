@@ -147,7 +147,8 @@ Vulnerable
 Example 1 End
 
 Example 2 Start:
-Input:
+
+[Input]:
 public String query(String bar) throws IOException {{
     String test = bar;
     test = "searchString";
@@ -166,6 +167,7 @@ Not vulnerable
 
 Example 2 End
 Example 3 Start:
+
 [Input]:
 public boolean getUser(Connection conn, String username) throws SQLException {{
     String sql = "SELECT user_id FROM users WHERE username = ?";
@@ -187,6 +189,7 @@ Not vulnerable
 Example 3 End
 
 Source code of file that was analyzed:
+[Input]:
 ```
 {file_content}
 ```
@@ -197,6 +200,8 @@ Title: {scan_title}
 Details for specific finding: {scan_details}
 Extra information: {scan_extra_info}
 ```
+
+[Output]:
 """
 
 PROMPT_TEMPLATE_COT = """

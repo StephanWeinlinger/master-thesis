@@ -114,8 +114,9 @@ Analyze the following source code and identify any potential security vulnerabil
 Important: Respond only with a comma-separated list of CWE identifiers (e.g., "CWE-89,CWE-79") if vulnerabilities are found, or "Not vulnerable" if no vulnerabilities are found.
 
 Here are some examples:
-Example 1:
-Input:
+Example 1 Start:
+
+[Input]:
 public void login(Connection conn, String username, String password) throws SQLException, NoSuchAlgorithmException {{
     String sql = "SELECT * FROM users WHERE username = '" + username + "'";
     Statement stmt = conn.createStatement();
@@ -125,22 +126,27 @@ public void login(Connection conn, String username, String password) throws SQLE
     byte[] passwordHash = md.digest();
 }}
 
-Output:
+[Output]:
 CWE-89,CWE-328
 
-Example 2:
-Input:
+Example 1 End
+
+Example 2 Start:
+
+[Input]:
 public String readFile(String filename) throws IOException {{
     String baseDir = "/var/user_files/";
     Path filePath = Paths.get(baseDir + filename);
     return new String(Files.readAllBytes(filePath));
 }}
 
-Output:
+[Output]:
 CWE-22
 
-Example 3:
-Input:
+Example 2 End
+Example 3 Start:
+
+[Input]:
 public boolean getUser(Connection conn, String username) throws SQLException {{
     String sql = "SELECT user_id FROM users WHERE username = ?";
     try (PreparedStatement pstmt = conn.prepareStatement(sql)) {{
@@ -150,15 +156,18 @@ public boolean getUser(Connection conn, String username) throws SQLException {{
     }}
 }}
 
-Output:
+[Output]:
 Not vulnerable
 
+Example 3 End
+
 Source code to be analyzed:
-Input:
+[Input]:
 ```
 {file_content}
 ```
-Output:
+
+[Output]:
 """
 
 PROMPT_TEMPLATE_COT = """
