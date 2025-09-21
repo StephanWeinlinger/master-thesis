@@ -11,10 +11,9 @@ CWE_HIERARCHY = {
     "CWE-79": ["CWE-79", "CWE-80", "CWE-74"],  # Cross-Site Scripting (XSS) variations
     "CWE-89": ["CWE-89", "CWE-564", "CWE-943"],  # SQL Injection variations
     "CWE-90": ["CWE-90", "CWE-943"],  # LDAP Injection variations
-    "CWE-327": ["CWE-327", "CWE-326", "CWE-328"],  # Cryptographic Issues
+    "CWE-327": ["CWE-327", "CWE-328"],  # Cryptographic Issues
     "CWE-328": ["CWE-328", "CWE-327", "CWE-326", "CWE-916"],  # Cryptographic Issues
     "CWE-330": ["CWE-330", "CWE-338"],  # Cryptographic Issues
-    "CWE-501": ["CWE-501"],
     "CWE-614": ["CWE-614"],
     "CWE-643": ["CWE-643"],
 }

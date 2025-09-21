@@ -356,9 +356,8 @@ def query_llm(model_name: str, prompt: str):
 # --- Processing Logic ---
 
 
-def parse_llm_output(raw_output: str, prompt_type: str):
+def parse_llm_output(raw_output: str):
     raw_output = raw_output.strip()
-    final_answer = raw_output
 
     lines = raw_output.split("\n")
     non_empty_lines = [line.strip() for line in lines if line.strip()]
@@ -402,7 +401,7 @@ def process_file(file_path: str, model_name: str, prompt_type: str):
         analysis_time = time.time() - start_time
 
         raw_output = llm_response.get("text", "")
-        parsed_cwes = parse_llm_output(raw_output, prompt_type)
+        parsed_cwes = parse_llm_output(raw_output)
 
         # Token and Cost Calculation
         pricing = MODEL_CONFIG[model_name]["pricing"]
