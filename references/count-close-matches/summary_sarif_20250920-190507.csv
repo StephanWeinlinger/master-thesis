@@ -1,0 +1,12 @@
+scan,cwe,direct_match_percentage,tp,fp,tn,fn,accuracy,precision,recall,f1
+snyk-cleaned-filtered,CWE-22,,0,0,135,133,0.5037,0,0,0
+snyk-cleaned-filtered,CWE-328,,0,0,107,129,0.4534,0,0,0
+snyk-cleaned-filtered,CWE-327,1,130,0,116,0,1,1,1,1
+snyk-cleaned-filtered,CWE-78,1,115,71,54,11,0.6733,0.6183,0.9127,0.7372
+snyk-cleaned-filtered,CWE-89,1,196,112,120,76,0.627,0.6364,0.7206,0.6759
+snyk-cleaned-filtered,CWE-330,1,218,23,252,0,0.9533,0.9046,1,0.9499
+snyk-cleaned-filtered,CWE-90,1,24,17,15,3,0.661,0.5854,0.8889,0.7059
+snyk-cleaned-filtered,CWE-79,1,220,115,94,26,0.6901,0.6567,0.8943,0.7573
+snyk-cleaned-filtered,CWE-614,1,36,0,31,0,1,1,1,1
+snyk-cleaned-filtered,CWE-643,1,14,12,8,1,0.6286,0.5385,0.9333,0.6829
+snyk-cleaned-filtered,all,1,953,350,932,379,0.7211,0.7314,0.7155,0.7233
