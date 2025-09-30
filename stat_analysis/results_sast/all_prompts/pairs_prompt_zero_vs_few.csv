@@ -1,0 +1,2 @@
+contrast,odds.ratio,SE,df,null,z.ratio,p.value
+(zero-shot) / (few-shot),1.0416392874367455,0.028628060403376163,Inf,1,1.4843623289517183,0.13771282299551915
