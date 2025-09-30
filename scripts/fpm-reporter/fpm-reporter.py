@@ -12,26 +12,12 @@ def calculate_metrics(df: pd.DataFrame) -> dict:
     tn = df["tn"].sum()
     fn = df["fn"].sum()
 
-    tp_old = df["tp_old"].sum()
-    fp_old = df["fp_old"].sum()
-    tn_old = df["tn_old"].sum()
-    fn_old = df["fn_old"].sum()
-
-    tp_diff = tp - tp_old
-    fp_diff = fp - fp_old
-    tn_diff = tn - tn_old
-    fn_diff = fn - fn_old
-
     metrics.update(
         {
             "tp": tp,
-            "tp_diff": tp_diff,
             "fp": fp,
-            "fp_diff": fp_diff,
             "tn": tn,
-            "tn_diff": tn_diff,
             "fn": fn,
-            "fn_diff": fn_diff,
         }
     )
 
@@ -55,7 +41,50 @@ def calculate_metrics(df: pd.DataFrame) -> dict:
         else 0.0
     )
 
-    # Token, cost, and time metrics
+    tp_fpm = ((df["tp_old"] == 1) & (df["tp"] == 1)).sum()
+    fp_fpm = ((df["fp_old"] == 1) & (df["fp"] == 1)).sum()
+    tn_fpm = ((df["fp_old"] == 1) & (df["tn"] == 1)).sum()
+    fn_fpm = ((df["tp_old"] == 1) & (df["fn"] == 1)).sum()
+
+    metrics.update(
+        {
+            "tp_fpm": tp_fpm,
+            "fp_fpm": fp_fpm,
+            "tn_fpm": tn_fpm,
+            "fn_fpm": fn_fpm,
+        }
+    )
+
+    # FPM derived metrics
+    denominator_recall_fpm = tp_fpm + fn_fpm
+    recall_fpm = (
+        (tp_fpm / denominator_recall_fpm) if denominator_recall_fpm > 0 else 0.0
+    )
+
+    denominator_specificity_fpm = tn_fpm + fp_fpm
+    specificity_fpm = (
+        (tn_fpm / denominator_specificity_fpm)
+        if denominator_specificity_fpm > 0
+        else 0.0
+    )
+
+    denominator_precision_fpm = tp_fpm + fp_fpm
+    precision_fpm = (
+        (tp_fpm / denominator_precision_fpm) if denominator_precision_fpm > 0 else 0.0
+    )
+
+    bal_accuracy_fpm = (recall_fpm + specificity_fpm) / 2
+
+    metrics.update(
+        {
+            "recall_fpm": recall_fpm,
+            "specificity_fpm": specificity_fpm,
+            "precision_fpm": precision_fpm,
+            "bal_accuracy_fpm": bal_accuracy_fpm,
+        }
+    )
+
+    # --- Token, cost, and time metrics ---
     metrics["avg_input_tokens"] = df["input_token"].mean()
     metrics["avg_reasoning_tokens"] = df["reasoning_token"].mean()
     metrics["avg_output_tokens"] = df["output_token"].mean()
@@ -146,23 +175,27 @@ def evaluate_fp_mitigation(input_folder: Path, output_folder: Path):
     if summary_data:
         summary_df = pd.DataFrame(summary_data)
 
-        # Define and set column order for the summary file, including difference columns
+        # Define and set column order for the summary file
         summary_columns = [
             "model",
             "prompting_type",
             "cwe",
             "tp",
-            "tp_diff",
             "fp",
-            "fp_diff",
             "tn",
-            "tn_diff",
             "fn",
-            "fn_diff",
             "accuracy",
             "precision",
             "recall",
             "f1",
+            "tp_fpm",
+            "fp_fpm",
+            "tn_fpm",
+            "fn_fpm",
+            "recall_fpm",
+            "specificity_fpm",
+            "precision_fpm",
+            "bal_accuracy_fpm",
             "avg_input_tokens",
             "avg_reasoning_tokens",
             "avg_output_tokens",
